@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="description"
+    content="Mochi Weather — aplikasi cuaca cute dan interaktif."
+  >
+
+  <meta name="theme-color" content="#9edcff">
+
+  <title>Mochi Weather ☁️</title>
+
+  <!-- Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  >
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- Decorative Background -->
+  <div class="sky-decor" aria-hidden="true">
+    <span class="cloud cloud-1">☁️</span>
+    <span class="cloud cloud-2">☁️</span>
+    <span class="spark spark-1">✦</span>
+    <span class="spark spark-2">✧</span>
+  </div>
+
+
+  <!-- Main Application -->
+  <main class="app-shell">
+
+    <!-- ================= HEADER ================= -->
+    <header class="topbar">
+
+      <a href="#" class="brand" aria-label="Mochi Weather Home">
+
+        <span class="brand-mascot">
+          ☁️
+        </span>
+
+        <span>
+          Mochi Weather
+        </span>
+
+      </a>
+
+
+      <div class="top-actions">
+
+        <button
+          id="locationBtn"
+          class="icon-btn"
+          title="Gunakan lokasi saya"
+          aria-label="Gunakan lokasi saya"
+        >
+          ⌖
+        </button>
+
+
+        <button
+          id="themeBtn"
+          class="icon-btn"
+          title="Ganti tema"
+          aria-label="Ganti tema"
+        >
+          ☾
+        </button>
+
+      </div>
+
+    </header>
+
+
+
+    <!-- ================= SEARCH ================= -->
+    <section class="search-area">
+
+      <div class="search-box">
+
+        <span class="search-icon">
+          ⌕
+        </span>
+
+
+        <input
+          id="cityInput"
+          type="search"
+          placeholder="Cari kota..."
+          autocomplete="off"
+          aria-label="Cari kota"
+        >
+
+
+        <button
+          id="searchBtn"
+          class="search-btn"
+        >
+          Cari
+        </button>
+
+      </div>
+
+
+      <!-- Search Results -->
+      <div
+        id="searchResults"
+        class="search-results"
+        hidden
+      ></div>
+
+
+      <!-- Search Suggestions -->
+      <p class="search-hint">
+
+        Coba cari:
+
+        <button
+          class="city-chip"
+          data-city="Pamekasan"
+        >
+          Pamekasan
+        </button>
+
+        <button
+          class="city-chip"
+          data-city="Surabaya"
+        >
+          Surabaya
+        </button>
+
+        <button
+          class="city-chip"
+          data-city="Jakarta"
+        >
+          Jakarta
+        </button>
+
+      </p>
+
+    </section>
+
+
+
+    <!-- ================= STATUS ================= -->
+
+    <div
+      id="status"
+      class="status"
+      aria-live="polite"
+    ></div>
+
+
+
+    <!-- ================= WEATHER VIEW ================= -->
+
+    <section
+      id="weatherView"
+      hidden
+    >
+
+
+      <!-- HERO WEATHER CARD -->
+
+      <div class="hero-card">
+
+
+        <!-- Weather Information -->
+
+        <div class="hero-copy">
+
+
+          <div class="location-line">
+
+            <span>
+              📍
+            </span>
+
+
+            <div>
+
+              <h1 id="cityName">
+                Pamekasan
+              </h1>
+
+              <p id="countryName">
+                Indonesia
+              </p>
+
+            </div>
+
+          </div>
+
+
+
+          <p
+            id="dateText"
+            class="date-text"
+          ></p>
+
+
+
+          <!-- Temperature -->
+
+          <div class="temperature-row">
+
+            <span id="temperature">
+              --
+            </span>
+
+            <sup>
+              °
+            </sup>
+
+          </div>
+
+
+
+          <h2 id="condition">
+            Memuat...
+          </h2>
+
+
+          <p id="feelsLike">
+            Terasa seperti --°
+          </p>
+
+
+        </div>
+
+
+
+        <!-- Mochi Character -->
+
+        <div
+          class="mochi-scene"
+          id="mochiScene"
+          aria-label="Maskot cuaca"
+        >
+
+          <div
+            class="weather-orb"
+            id="weatherOrb"
+          >
+            ☀️
+          </div>
+
+
+          <div
+            class="mochi"
+            id="mochi"
+          >
+            ◕ᴗ◕
+          </div>
+
+
+          <div
+            class="mochi-caption"
+            id="mochiCaption"
+          >
+            Mochi lagi ceria!
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- ================= TODAY ================= -->
+
+      <section class="section">
+
+        <div class="section-title">
+
+          <h2>
+            Today
+          </h2>
+
+
+          <button
+            id="refreshBtn"
+            class="small-btn"
+          >
+            ↻ Refresh
+          </button>
+
+        </div>
+
+
+
+        <div class="details-grid">
+
+
+          <!-- Humidity -->
+
+          <article class="detail-card">
+
+            <span>
+              💧
+            </span>
+
+            <div>
+
+              <small>
+                Humidity
+              </small>
+
+              <strong id="humidity">
+                --%
+              </strong>
+
+            </div>
+
+          </article>
+
+
+
+          <!-- Wind -->
+
+          <article class="detail-card">
+
+            <span>
+              💨
+            </span>
+
+            <div>
+
+              <small>
+                Wind
+              </small>
+
+              <strong id="wind">
+                -- km/h
+              </strong>
+
+            </div>
+
+          </article>
+
+
+
+          <!-- Feels Like -->
+
+          <article class="detail-card">
+
+            <span>
+              🌡️
+            </span>
+
+            <div>
+
+              <small>
+                Feels like
+              </small>
+
+              <strong id="feelsDetail">
+                --°C
+              </strong>
+
+            </div>
+
+          </article>
+
+
+
+          <!-- Rain -->
+
+          <article class="detail-card">
+
+            <span>
+              🌧️
+            </span>
+
+            <div>
+
+              <small>
+                Rain chance
+              </small>
+
+              <strong id="rainChance">
+                --%
+              </strong>
+
+            </div>
+
+          </article>
+
+
+        </div>
+
+      </section>
+
+
+
+      <!-- ================= HOURLY ================= -->
+
+      <section class="section">
+
+        <div class="section-title">
+
+          <h2>
+            Hourly
+          </h2>
+
+          <span class="section-note">
+            Next 12 hours
+          </span>
+
+        </div>
+
+
+        <div
+          id="hourly"
+          class="hourly-list"
+        ></div>
+
+      </section>
+
+
+
+      <!-- ================= 7 DAY FORECAST ================= -->
+
+      <section class="section">
+
+        <div class="section-title">
+
+          <h2>
+            7-Day Forecast
+          </h2>
+
+          <span class="section-note">
+            Plan your week ✨
+          </span>
+
+        </div>
+
+
+        <div
+          id="daily"
+          class="daily-list"
+        ></div>
+
+      </section>
+
+
+    </section>
+
+
+
+    <!-- ================= WELCOME SCREEN ================= -->
+
+    <section
+      id="welcome"
+      class="welcome-card"
+    >
+
+      <div class="welcome-illustration">
+
+        ☁️
+
+        <span>
+          ◕ᴗ◕
+        </span>
+
+        ☀️
+
+      </div>
+
+
+      <h1>
+        Where should Mochi
+        <br>
+        check the weather?
+      </h1>
+
+
+      <p>
+        Masukkan nama kota dan biarkan Mochi
+        membawakan ramalan cuacanya. ✨
+      </p>
+
+
+      <button
+        class="primary-btn"
+        data-city="Pamekasan"
+      >
+        Coba Pamekasan
+      </button>
+
+    </section>
+
+
+
+    <!-- ================= ERROR ================= -->
+
+    <section
+      id="errorCard"
+      class="error-card"
+      hidden
+    >
+
+      <div class="error-face">
+        ⊙﹏⊙
+      </div>
+
+
+      <h2>
+        Oops! Mochi kehilangan sinyal ☁️
+      </h2>
+
+
+      <p id="errorText">
+        Coba cek koneksi internetmu lalu ulangi.
+      </p>
+
+
+      <button
+        id="retryBtn"
+        class="primary-btn"
+      >
+        Try Again
+      </button>
+
+    </section>
+
+
+
+    <!-- ================= FOOTER ================= -->
+
+    <footer>
+
+      Made with ☁️ + JavaScript
+
+      <span>
+        ·
+      </span>
+
+      Weather data by Open-Meteo
+
+    </footer>
+
+
+  </main>
+
+
+
+  <!-- JavaScript -->
+  <script src="script.js"></script>
+
+</body>
+</html>
