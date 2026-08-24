@@ -1,0 +1,905 @@
+const $ = (id) => document.getElementById(id);
+
+const state = {
+  weather: null,
+  location: null,
+  dark: localStorage.getItem("mochi-theme") === "dark"
+};
+
+const weatherCodes = {
+  0: ["Cerah", "☀️", "Mochi lagi ceria!"],
+  1: ["Cerah berawan", "🌤️", "Mochi santai di bawah matahari."],
+  2: ["Berawan sebagian", "⛅", "Mochi lagi lihat awan."],
+  3: ["Berawan", "☁️", "Mochi lagi rebahan di awan."],
+  45: ["Berkabut", "🌫️", "Mochi lagi main petak umpet."],
+  48: ["Kabut", "🌫️", "Mochi butuh jaket nih!"],
+  51: ["Gerimis ringan", "🌦️", "Mochi pakai payung kecil."],
+  53: ["Gerimis", "🌦️", "Jangan lupa payung ya!"],
+  55: ["Gerimis lebat", "🌧️", "Mochi mulai kehujanan."],
+  61: ["Hujan ringan", "🌧️", "Mochi pakai jas hujan!"],
+  63: ["Hujan", "🌧️", "Waktunya ngadem di rumah."],
+  65: ["Hujan lebat", "🌧️", "Mochi jangan lupa payung!"],
+  71: ["Salju ringan", "🌨️", "Mochi bikin snowball!"],
+  73: ["Salju", "❄️", "Mochi kedinginan."],
+  75: ["Salju lebat", "❄️", "Brrr... dingin banget!"],
+  80: ["Hujan lokal", "🌦️", "Awan lagi iseng."],
+  81: ["Hujan lokal", "🌧️", "Mochi cari tempat teduh."],
+  82: ["Hujan sangat lebat", "⛈️", "Mochi buru-buru pulang!"],
+  95: ["Badai petir", "⛈️", "Mochi sedikit kaget!"],
+  96: ["Petir + hujan es", "⛈️", "Tetap di tempat aman ya."],
+  99: ["Badai kuat", "⛈️", "Mochi ngumpet dulu."]
+};
+
+
+/* ================= WEATHER INFO ================= */
+
+function getWeatherInfo(code) {
+  return (
+    weatherCodes[code] || [
+      "Tidak diketahui",
+      "🌈",
+      "Mochi belum tahu cuacanya."
+    ]
+  );
+}
+
+
+/* ================= DATE ================= */
+
+function formatDate(date, options) {
+  return new Intl.DateTimeFormat(
+    "id-ID",
+    options
+  ).format(date);
+}
+
+
+/* ================= THEME ================= */
+
+function applyTheme() {
+  document.body.classList.toggle(
+    "dark",
+    state.dark
+  );
+
+  $("themeBtn").textContent =
+    state.dark ? "☀" : "☾";
+
+  localStorage.setItem(
+    "mochi-theme",
+    state.dark ? "dark" : "light"
+  );
+}
+
+
+/* ================= STATUS ================= */
+
+function setStatus(text = "") {
+  $("status").textContent = text;
+}
+
+
+/* ================= LOADING ================= */
+
+function setLoading(loading) {
+
+  if (loading) {
+
+    setStatus(
+      "Mochi sedang mengecek langit... ☁️"
+    );
+
+    $("welcome").hidden = true;
+    $("errorCard").hidden = true;
+
+  } else {
+
+    setStatus("");
+
+  }
+
+}
+
+
+/* ================= ERROR ================= */
+
+function showError(message) {
+
+  $("weatherView").hidden = true;
+  $("welcome").hidden = true;
+  $("errorCard").hidden = false;
+
+  $("errorText").textContent = message;
+
+  setStatus("");
+
+}
+
+
+/* ================= GEOCODING ================= */
+
+async function geocode(city) {
+
+  const url =
+    "https://geocoding-api.open-meteo.com/v1/search" +
+    `?name=${encodeURIComponent(city)}` +
+    "&count=5" +
+    "&language=id" +
+    "&format=json";
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error("Geocoding gagal");
+  }
+
+  const data = await response.json();
+
+  return data.results || [];
+}
+
+
+/* ================= SEARCH RESULT ================= */
+
+function renderSearchResults(results) {
+
+  const box = $("searchResults");
+
+  box.innerHTML = "";
+
+  if (!results.length) {
+
+    box.innerHTML = `
+      <div class="result-btn">
+        Kota tidak ditemukan 🔎
+      </div>
+    `;
+
+  } else {
+
+    results.forEach((place) => {
+
+      const button =
+        document.createElement("button");
+
+      button.className = "result-btn";
+
+      button.innerHTML = `
+        <strong>
+          ${place.name}
+        </strong>
+
+        <br>
+
+        <small>
+          ${place.admin1 || ""}
+          ${place.country ? ` · ${place.country}` : ""}
+        </small>
+      `;
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          box.hidden = true;
+
+          $("cityInput").value =
+            place.name;
+
+          loadWeather(place);
+
+        }
+      );
+
+      box.appendChild(button);
+
+    });
+
+  }
+
+  box.hidden = false;
+}
+
+
+/* ================= SEARCH CITY ================= */
+
+async function searchCity() {
+
+  const query =
+    $("cityInput").value.trim();
+
+  if (!query) {
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+
+    const results =
+      await geocode(query);
+
+    renderSearchResults(results);
+
+    if (results.length === 1) {
+
+      $("searchResults").hidden = true;
+
+      loadWeather(results[0]);
+
+    }
+
+  } catch (error) {
+
+    showError(
+      "Pencarian kota gagal. Coba lagi."
+    );
+
+  }
+
+}
+
+
+/* ================= LOAD WEATHER ================= */
+
+async function loadWeather(place) {
+
+  setLoading(true);
+
+  try {
+
+    const params =
+      new URLSearchParams({
+
+        latitude: place.latitude,
+
+        longitude: place.longitude,
+
+        timezone: "auto",
+
+        forecast_days: "7",
+
+        current:
+          "temperature_2m," +
+          "relative_humidity_2m," +
+          "apparent_temperature," +
+          "is_day," +
+          "precipitation," +
+          "weather_code," +
+          "wind_speed_10m",
+
+        hourly:
+          "temperature_2m," +
+          "weather_code," +
+          "precipitation_probability",
+
+        daily:
+          "weather_code," +
+          "temperature_2m_max," +
+          "temperature_2m_min," +
+          "precipitation_probability_max"
+
+      });
+
+
+    const response =
+      await fetch(
+        `https://api.open-meteo.com/v1/forecast?${params}`
+      );
+
+
+    if (!response.ok) {
+      throw new Error(
+        "Weather gagal"
+      );
+    }
+
+
+    const data =
+      await response.json();
+
+
+    state.weather = data;
+
+    state.location = place;
+
+
+    localStorage.setItem(
+      "mochi-location",
+      JSON.stringify(place)
+    );
+
+
+    renderWeather();
+
+  } catch (error) {
+
+    showError(
+      "Mochi tidak bisa mengambil data cuaca. Periksa internet lalu coba lagi."
+    );
+
+  }
+
+}
+
+
+/* ================= RENDER WEATHER ================= */
+
+function renderWeather() {
+
+  const weather = state.weather;
+
+  const place = state.location;
+
+  const current =
+    weather.current;
+
+
+  const [
+    condition,
+    icon,
+    caption
+  ] =
+    getWeatherInfo(
+      current.weather_code
+    );
+
+
+  $("weatherView").hidden = false;
+
+  $("welcome").hidden = true;
+
+  $("errorCard").hidden = true;
+
+
+  /* Location */
+
+  $("cityName").textContent =
+    place.name;
+
+  $("countryName").textContent =
+    place.country || "Lokasi";
+
+
+  /* Date */
+
+  $("dateText").textContent =
+    formatDate(
+      new Date(),
+      {
+        weekday: "long",
+        day: "numeric",
+        month: "long"
+      }
+    );
+
+
+  /* Temperature */
+
+  $("temperature").textContent =
+    Math.round(
+      current.temperature_2m
+    );
+
+
+  $("condition").textContent =
+    condition;
+
+
+  $("feelsLike").textContent =
+    `Terasa seperti ${Math.round(
+      current.apparent_temperature
+    )}°C`;
+
+
+  /* Details */
+
+  $("humidity").textContent =
+    `${current.relative_humidity_2m}%`;
+
+
+  $("wind").textContent =
+    `${Math.round(
+      current.wind_speed_10m
+    )} km/h`;
+
+
+  $("feelsDetail").textContent =
+    `${Math.round(
+      current.apparent_temperature
+    )}°C`;
+
+
+  $("rainChance").textContent =
+    `${weather.daily
+      .precipitation_probability_max?.[0] ?? 0}%`;
+
+
+  /* Mochi */
+
+  $("weatherOrb").textContent =
+    current.is_day
+      ? icon
+      : current.weather_code === 0
+        ? "🌙"
+        : icon;
+
+
+  $("mochiCaption").textContent =
+    caption;
+
+
+  if (current.weather_code >= 95) {
+
+    $("mochi").textContent =
+      "⊙﹏⊙";
+
+  } else if (
+    current.weather_code >= 51
+  ) {
+
+    $("mochi").textContent =
+      "•ᴗ•";
+
+  } else {
+
+    $("mochi").textContent =
+      "◕ᴗ◕";
+
+  }
+
+
+  renderHourly();
+
+  renderDaily();
+
+}
+
+
+/* ================= HOURLY ================= */
+
+function renderHourly() {
+
+  const weather =
+    state.weather;
+
+  const now =
+    new Date();
+
+
+  const start =
+    weather.hourly.time.findIndex(
+      (time) =>
+        new Date(time) >= now
+    );
+
+
+  const first =
+    Math.max(0, start);
+
+
+  const times =
+    weather.hourly.time.slice(
+      first,
+      first + 12
+    );
+
+
+  $("hourly").innerHTML =
+    times
+      .map((time, index) => {
+
+        const dataIndex =
+          first + index;
+
+        const date =
+          new Date(time);
+
+
+        const [
+          condition,
+          icon
+        ] =
+          getWeatherInfo(
+            weather.hourly
+              .weather_code[dataIndex]
+          );
+
+
+        return `
+
+          <article
+            class="hour-card ${
+              index === 0
+                ? "current"
+                : ""
+            }"
+          >
+
+            <small>
+              ${
+                index === 0
+                  ? "Now"
+                  : formatDate(
+                      date,
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      }
+                    )
+              }
+            </small>
+
+
+            <div
+              class="hour-icon"
+              title="${condition}"
+            >
+              ${icon}
+            </div>
+
+
+            <div class="hour-temp">
+              ${Math.round(
+                weather.hourly
+                  .temperature_2m[
+                    dataIndex
+                  ]
+              )}°
+            </div>
+
+          </article>
+
+        `;
+
+      })
+      .join("");
+
+}
+
+
+/* ================= DAILY ================= */
+
+function renderDaily() {
+
+  const weather =
+    state.weather;
+
+
+  $("daily").innerHTML =
+    weather.daily.time
+      .map((time, index) => {
+
+        const date =
+          new Date(
+            `${time}T12:00:00`
+          );
+
+
+        const [
+          condition,
+          icon
+        ] =
+          getWeatherInfo(
+            weather.daily
+              .weather_code[index]
+          );
+
+
+        const dayName =
+          index === 0
+            ? "Hari ini"
+            : formatDate(
+                date,
+                {
+                  weekday: "long"
+                }
+              );
+
+
+        return `
+
+          <article class="day-card">
+
+            <div class="day-name">
+              ${dayName}
+            </div>
+
+
+            <div class="day-condition">
+
+              <span>
+                ${icon}
+              </span>
+
+              <span>
+                ${condition}
+              </span>
+
+            </div>
+
+
+            <div class="day-temp">
+
+              <span>
+                ${Math.round(
+                  weather.daily
+                    .temperature_2m_min[
+                      index
+                    ]
+                )}°
+              </span>
+
+              ${Math.round(
+                weather.daily
+                  .temperature_2m_max[
+                    index
+                  ]
+              )}°C
+
+            </div>
+
+          </article>
+
+        `;
+
+      })
+      .join("");
+
+}
+
+
+/* ================= CURRENT LOCATION ================= */
+
+function useLocation() {
+
+  if (!navigator.geolocation) {
+
+    showError(
+      "Browser ini tidak mendukung lokasi."
+    );
+
+    return;
+
+  }
+
+
+  setLoading(true);
+
+
+  navigator.geolocation.getCurrentPosition(
+
+    async (position) => {
+
+      try {
+
+        const latitude =
+          position.coords.latitude;
+
+        const longitude =
+          position.coords.longitude;
+
+
+        /*
+          Kita pakai reverse geocoding
+          untuk mendapatkan nama lokasi.
+        */
+
+        const response =
+          await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=Pamekasan&count=1&format=json`
+          );
+
+
+        const data =
+          await response.json();
+
+
+        const fallback =
+          data.results?.[0] || {
+            name: "Lokasiku",
+            country: "Indonesia"
+          };
+
+
+        await loadWeather({
+
+          ...fallback,
+
+          latitude,
+
+          longitude
+
+        });
+
+
+      } catch (error) {
+
+        showError(
+          "Lokasi ditemukan, tetapi data cuaca gagal diambil."
+        );
+
+      }
+
+    },
+
+
+    () => {
+
+      showError(
+        "Izin lokasi ditolak. Kamu tetap bisa mencari kota secara manual."
+      );
+
+    }
+
+  );
+
+}
+
+
+/* ================= BUTTON EVENTS ================= */
+
+$("searchBtn")
+  .addEventListener(
+    "click",
+    searchCity
+  );
+
+
+$("cityInput")
+  .addEventListener(
+    "keydown",
+    (event) => {
+
+      if (event.key === "Enter") {
+
+        searchCity();
+
+      }
+
+
+      if (event.key === "Escape") {
+
+        $("searchResults").hidden =
+          true;
+
+      }
+
+    }
+  );
+
+
+$("themeBtn")
+  .addEventListener(
+    "click",
+    () => {
+
+      state.dark =
+        !state.dark;
+
+      applyTheme();
+
+    }
+  );
+
+
+$("locationBtn")
+  .addEventListener(
+    "click",
+    useLocation
+  );
+
+
+$("refreshBtn")
+  .addEventListener(
+    "click",
+    () => {
+
+      if (state.location) {
+
+        loadWeather(
+          state.location
+        );
+
+      }
+
+    }
+  );
+
+
+$("retryBtn")
+  .addEventListener(
+    "click",
+    () => {
+
+      if (state.location) {
+
+        loadWeather(
+          state.location
+        );
+
+      } else {
+
+        searchCity();
+
+      }
+
+    }
+  );
+
+
+/* ================= CITY BUTTONS ================= */
+
+document
+  .querySelectorAll("[data-city]")
+  .forEach((button) => {
+
+    button.addEventListener(
+      "click",
+      () => {
+
+        $("cityInput").value =
+          button.dataset.city;
+
+        searchCity();
+
+      }
+    );
+
+  });
+
+
+/* ================= CLOSE SEARCH ================= */
+
+document.addEventListener(
+  "click",
+  (event) => {
+
+    if (
+      !$("searchResults")
+        .contains(event.target) &&
+      !$("cityInput")
+        .contains(event.target)
+    ) {
+
+      $("searchResults").hidden =
+        true;
+
+    }
+
+  }
+);
+
+
+/* ================= START APP ================= */
+
+applyTheme();
+
+
+const savedLocation =
+  localStorage.getItem(
+    "mochi-location"
+  );
+
+
+if (savedLocation) {
+
+  try {
+
+    loadWeather(
+      JSON.parse(savedLocation)
+    );
+
+  } catch {
+
+    $("welcome").hidden =
+      false;
+
+  }
+
+} else {
+
+  $("welcome").hidden =
+    false;
+
+}
